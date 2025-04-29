@@ -25,10 +25,10 @@ EJERCICIO_1B_HECHO: db FALSE ; Cambiar por `TRUE` para correr los tests.
 
 ;########### ESTOS SON LOS OFFSETS Y TAMAÑO DE LOS STRUCTS
 ; Completar las definiciones (serán revisadas por ABI enforcer):
-ITEM_NOMBRE EQU ??
-ITEM_FUERZA EQU ??
-ITEM_DURABILIDAD EQU ??
-ITEM_SIZE EQU ??
+ITEM_NOMBRE EQU 0			;	El nombre es el primer atributo del struct
+ITEM_FUERZA EQU 20			;	Fuerza arranca en el 20 porque tengo 2B de padding después de los 18 del nombre
+ITEM_DURABILIDAD EQU 24
+ITEM_SIZE EQU 32
 
 ;; La funcion debe verificar si una vista del inventario está correctamente 
 ;; ordenada de acuerdo a un criterio (comparador)
@@ -59,11 +59,18 @@ es_indice_ordenado:
 	; ubicación según la convención de llamada. Prestá atención a qué
 	; valores son de 64 bits y qué valores son de 32 bits o 8 bits.
 	;
-	; r/m64 = item_t**     inventario
-	; r/m64 = uint16_t*    indice
-	; r/m16 = uint16_t     tamanio
-	; r/m64 = comparador_t comparador
-		ret
+	; r/m64 = item_t**     inventario		RDI
+	; r/m64 = uint16_t*    indice			RSI
+	; r/m16 = uint16_t     tamanio			DX
+	; r/m64 = comparador_t comparador		RCX
+	push rbp
+	mov rbp, rsp
+
+	
+
+.fin:
+	pop rbp
+	ret
 
 ;; Dado un inventario y una vista, crear un nuevo inventario que mantenga el
 ;; orden descrito por la misma.

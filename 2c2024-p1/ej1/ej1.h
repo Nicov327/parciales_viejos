@@ -17,6 +17,14 @@ typedef struct {
 	uint16_t durabilidad;	//asmdef_offset:ITEM_DURABILIDAD
 } item_t; //asmdef_size:ITEM_SIZE
 
+/*	El siguiente bloque de texto lo escribí yo, no vino por defecto en el parcial
+[0-63]  	: [N O M B R E]
+[64-127]	: [N O M B R E]
+[128-191]	: [NOMBRE][Padding 2Bytes][FUERZA]
+[192-255]	: [DURABILIDAD][Padding 6Bytes]
+
+*/
+
 /**
  * El tipo de las funciones que se utilizan para comparar ítems.
  *
