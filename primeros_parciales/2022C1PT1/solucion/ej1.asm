@@ -3,7 +3,7 @@ extern free
 extern strClone
 extern strLen
 global strArrayNew                 ;   DESCOMENTAR PARA IMPLEMENTAR LA SOLUCIÓN EN ASM
-;global strArrayGetSize
+global strArrayGetSize
 ;global strArrayAddLast
 ;global strArraySwap
 ;global strArrayDelete
@@ -62,7 +62,7 @@ strArrayNew:
     pop rbp
     ret
 
-; uint8_t  strArrayGetSize(str_array_t* a)        ; a -> dil
+; uint8_t  strArrayGetSize(str_array_t* a)        ; a -> rdi
 strArrayGetSize:
     push rbp
     mov rbp, rsp
@@ -81,7 +81,7 @@ strArrayAddLast:
     push r14
     push r15
     mov rbp, rsp
-    ;sub rbp, 8      ;   Alineo la pila (hice una cantidad impar de pushes, por eso tengo que alinear nuevamente a 16 bytes)
+    sub rsp, 8      ;   Alineo la pila (hice una cantidad impar de pushes, por eso tengo que alinear nuevamente a 16 bytes)
 
     mov r12, rdi    ;   r12 contiene 'a'
     mov r13, rsi    ;   r13 contiene 'data'
@@ -90,7 +90,7 @@ strArrayAddLast:
     mov r8w, WORD [r12]  ;   En la parte baja del r8, tengo tanto el size (0-7) como el capacity (8-15)
     xor r9, r9
     mov r9b, r8b    ;   Cargo el size en el byte de abajo de r9
-    shr r8, 4       ;   Muevo 4 lugares a la derecha el r8 (Para que capacity quede en el byte de abajo)
+    shr r8, 8       ;   Muevo 8 lugares a la derecha el r8 (Para que capacity quede en el byte de abajo)
 
     cmp r8b, r9b    ;   Seteo flags acorde a la operación r8 - r9
     jle .fin
@@ -100,33 +100,38 @@ strArrayAddLast:
     call strLen
     mov rdi, rax    ;   Obtenida la longitud, pido esa cantidad de bytes por malloc
     mov r15, rax    ;   r15 contiene ahora la longitud del string a copiar
+    inc rdi         ;   Necesito un byte más para el null terminator del string a copiar (ej: Si mi string mide 6, necesito 7 bytes)
     call malloc
     mov r14, rax    ;   Me guardo en r14 el puntero para el nuevo string
     
-    mov r9, r12     ;   Voy a usar r9 para buscar el puntero de 'data' del strArray
-    add r9, 4       ;   Me muevo 4 bytes para encontrar el lugar del 'data' (1B por size, otro por capacity, y 2 por padding)
-    mov r8, [r9]    ;   Cargo en r8 el puntero de 'data' del strArray
+    mov r8, [r12 + strArray_DATA]   ;   Cargo en r8 el puntero de 'data' del strArray
 
+    mov rax, 8      ;   Tamaño (en bytes) de un puntero
     xor r9, r9
-    mov r9b, r12b   ;   Cargo el size en r9b para moverme la cantidad de lugares en la tabla que haga falta
-    add r8, r9      ;   Se lo agrego
+    mov r9b, byte [r12]              ;   Cargo el size
+    mul r9       ;   Multiplico tal tamaño por la cantidad de lugares ocupados en la tabla 'data'
 
-    mov [r8], r14   ;   EScribo en el array data del strArray la dirección del puntero al nuevo string
+    add r8, rax     ;   Del puntero de 'data', me desplazo la cantidad de lugares correspondientes
+
+    mov [r8], r14   ;   Escribo en el array data del strArray la dirección del puntero al nuevo string
+
+    add BYTE [r12 + strArray_SIZE], 1   ;   Incremento en 1 el size (pues agrego un nuevo puntero)
 
 .clonoString:
     cmp r15, 0      ;   Si ya no quedan caracteres por copiar, me voy al fin
     je .fin
 
-    mov r8b, [r12]  ;   Cargo en r8b el caracter del string a ser clonado
-    mov [r14], r8b  ;   Lo guardo en el puntero que fue escrito en la tabla 'data'
+    mov r8b, BYTE [r13]  ;   Cargo en r8b el caracter del string a ser clonado
+    mov BYTE [r14], r8b  ;   Lo guardo en el puntero que fue escrito en la tabla 'data'
 
     sub r15, 1      ;   Descuento un caracter a ser procesado
-    inc r12         ;   Me muevo un byte tanto en ambos punteros
+    inc r13         ;   Me muevo un byte tanto en ambos punteros
     inc r14
 
     jmp .clonoString
 
 .fin:
+    add rsp, 8
     pop r15
     pop r14
     pop r13
