@@ -21,7 +21,7 @@ EJERCICIO_1A_HECHO: db FALSE ; Cambiar por `TRUE` para correr los tests.
 ; Funciones a implementar:
 ;   - indice_a_inventario
 global EJERCICIO_1B_HECHO
-EJERCICIO_1B_HECHO: db FALSE ; Cambiar por `TRUE` para correr los tests.
+EJERCICIO_1B_HECHO: db TRUE ; Cambiar por `TRUE` para correr los tests.
 
 ;########### ESTOS SON LOS OFFSETS Y TAMAÑO DE LOS STRUCTS
 ; Completar las definiciones (serán revisadas por ABI enforcer):
@@ -29,7 +29,7 @@ ITEM_NOMBRE EQU 0			;	El nombre es el primer atributo del struct
 ITEM_FUERZA EQU 20			;	Fuerza arranca en el 20 porque tengo 2B de padding después de los 18 del nombre
 ITEM_DURABILIDAD EQU 24
 ITEM_SIZE EQU 32
-
+SIZE_OF_ITEM_PTR EQU 8
 ;; La funcion debe verificar si una vista del inventario está correctamente 
 ;; ordenada de acuerdo a un criterio (comparador)
 
@@ -66,9 +66,67 @@ es_indice_ordenado:
 	push rbp
 	mov rbp, rsp
 
-	
+	push r12
+	push r13
+	push r14
+	push r15
+	push rbx
+	sub rsp, 8
+
+	mov r12, rdi			;	Cargo en r12 el inventario
+	mov r13, rsi			;	Cargo en r13 el indice
+	movzx r14, dx			;	Cargo en r14w el tamanio (zero extended)
+	mov r15, rcx			;	Cargo en r15 el puntero de la función comparador
+
+	xor rax, rax
+	inc rax					;	La respuesta por defecto es TRUE
+
+	xor rbx, rbx			;	rbx -> i = 0
+	dec r14					;	r14 = tamanio-1
+
+.for:
+	cmp r14, rbx
+	je .fin
+
+	mov rdi, r13			;	Cargo en los registros a ser pasados como parámetros a comparador, el puntero de indice
+	mov rsi, r13
+
+	xor r8, r8
+	mov r8, rbx				;	Dado que cada elemento del array mide 2B, uso i para elegir el elemento y luego shifteo para agarrarlo correctamente
+	shl r8, 1
+
+	add rdi, r8				;	Agrego este offset al puntero de índice (i)
+
+	xor rdx, rdx
+	mov dx, WORD [rdi]		;	En dx, cargo indice[i]
+
+	mov rdi, [r12 + rdx * 8];	En rdi, cargo inventario[indice[i]]
+
+	inc rbx
+	xor r8, r8
+	mov r8, rbx
+	shl r8, 1
+
+	add rsi, r8				;	Agrego este offset al puntero de índice (i+1)
+
+	xor rdx, rdx
+	mov dx, WORD [rsi]		;	En si cargo indice[i+1]
+
+	mov rsi, [r12 + rdx * 8];	En rsi, cargo inventario[indice[i+1]]
+
+	call r15				;	Llamo a comparador
+	cmp rax, 0				;	Si me devolvió FALSE, me voy a .fin
+	je .fin					
+
+	jmp .for				;	Caso contrario, sigo ejecutando
 
 .fin:
+	add rsp, 8
+	pop rbx
+	pop r15
+	pop r14
+	pop r13
+	pop r12
 	pop rbp
 	ret
 
@@ -98,7 +156,51 @@ indice_a_inventario:
 	; ubicación según la convención de llamada. Prestá atención a qué
 	; valores son de 64 bits y qué valores son de 32 bits o 8 bits.
 	;
-	; r/m64 = item_t**  inventario
-	; r/m64 = uint16_t* indice
-	; r/m16 = uint16_t  tamanio
+	; r/m64 = item_t**  inventario		;	RDI
+	; r/m64 = uint16_t* indice			;	RSI
+	; r/m16 = uint16_t  tamanio			;	RDX
+	push rbp
+	mov rbp, rsp
+
+	push r12
+	push r13
+	push r14
+	push rbx
+
+	mov r12, rdi		;	Cargo inventario en r12
+	mov r13, rsi		;	Cargo indice en r13
+	movzx r14, dx		;	Cargo tamanio en r14
+
+	mov rdi, 8
+	movzx rax, dx
+	mul rdi				;	Calculo en rax la cantidad de bytes que tengo que pedir al malloc
+	mov rdi, rax
+	call malloc			;	En el rax me queda el puntero a ser devuelto
+
+	xor rbx, rbx		;	rbx -> i = 0
+	mov r10, r12		;	Cargo en r10 el puntero del inventario original
+	mov r11, rax		;	Cargo en r11 el puntero del nuevo inventario
+
+.for:
+	cmp r14, rbx
+	je .fin
+
+	xor r8, r8
+	mov r8w, [r13 + rbx * 2]	;	Cargo en r8w indice[i] (Ya es el número)
+	
+	mov rax, 8
+	mul r8w
+	mov r11, [r10 + rax]
+
+	add r11, 8
+	inc rbx
+
+	jmp .for
+
+.fin:
+	pop rbx
+	pop r14
+	pop r13
+	pop r12
+	pop rbp
 	ret
